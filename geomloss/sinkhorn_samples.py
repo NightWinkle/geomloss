@@ -2,7 +2,8 @@
 
 import numpy as np
 import torch
-from functools import partial
+from functools import partial, reduce
+from operator import mul
 
 try:  # Import the keops library, www.kernel-operations.io
     from pykeops.torch import generic_logsumexp
@@ -75,11 +76,36 @@ cost_formulas = {
     2 : "(SqDist(X,Y) / IntCst(2))",
 }
 
+def process_batch(tensor_x, tensor_y):
+    n_batch_dims = len(tensor_x.shape) - 2
+    
+    assert(n_batch_dims >= 0)
+
+    n, dx = tensor_x.shape[-2:]
+    m, dy = tensor_y.shape[-2:]
+
+    ranges_xy = None
+    if n_batch_dims > 0:
+        batch_size = reduce(mul, tensor_x.shape[:-2])
+
+        ranges_index_x = torch.arange(batch_size + 1, dtype=torch.int32) * n
+        ranges_index_y = torch.arange(batch_size + 1, dtype=torch.int32) * m
+        slices = torch.arange(1, batch_size + 1, dtype=torch.int32)
+        
+        ranges_xy = (ranges_index_x, slices, ranges_index_y, ranges_index_y, slices, ranges_index_x)
+    return ranges_xy
+    
+
 def softmin_online(ε, C_xy, f_y, log_conv=None):
     x, y = C_xy
-    # KeOps is pretty picky on the input shapes...
-    return - ε * log_conv( x, y, f_y.view(-1,1), torch.Tensor([1/ε]).type_as(x) ).view(-1)
 
+    target_shape = f_y.shape
+
+    d = x.shape[-1]
+    ranges_xy = process_batch(x, y)
+
+    # KeOps is pretty picky on the input shapes...
+    return - ε * log_conv( x.view(-1, d), y.view(-1, d), f_y.view(-1,1), torch.Tensor([1/ε]).type_as(x), ranges=ranges_xy).view(target_shape)
 
 def keops_lse(cost, D, dtype="float32"):
     log_conv = generic_logsumexp("( B - (P * " + cost + " ) )",
@@ -91,12 +117,11 @@ def keops_lse(cost, D, dtype="float32"):
                                  dtype = dtype)
     return log_conv
 
-
 def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scaling=.5, cost=None, identity=None,
                     debias = True, potentials = False, **kwargs):
     
-    B, N, D = x.shape
-    M, _ = y.shape
+    N, D = x.shape[-2:]
+    M, _ = y.shape[-2:]
 
     if cost is None: cost = cost_formulas[p]
 
