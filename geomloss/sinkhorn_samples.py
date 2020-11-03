@@ -32,7 +32,16 @@ def softmin_tensorized(ε, C, f):
     B = C.shape[0]
     return - ε * ( f.view(B,1,-1) - C/ε ).logsumexp(2).view(B,-1)
 
-def sinkhorn_tensorized(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scaling=.5, cost=None, 
+class NaturalIdentity:
+    @staticmethod
+    def forward(x):
+        return x
+    
+    @staticmethod
+    def backward(x):
+        return x
+
+def sinkhorn_tensorized(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scaling=.5, cost=None, identity=None,
                         debias = True, potentials = False, **kwargs):
     
     B, N, D = x.shape
@@ -40,8 +49,11 @@ def sinkhorn_tensorized(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, 
 
     if cost is None:
         cost = cost_routines[p]
+
+    if identity is None:
+        identity = NaturalIdentity
         
-    C_xx, C_yy = ( cost( x, x.detach()), cost( y, y.detach()) ) if debias else (None, None)  # (B,N,N), (B,M,M)
+    C_xx, C_yy = ( cost( x, identity.forward(x.detach())), cost( identity.backward(y), y.detach()) ) if debias else (None, None)  # (B,N,N), (B,M,M)
     C_xy, C_yx = ( cost( x, y.detach()), cost( y, x.detach()) )  # (B,N,M), (B,M,N)
 
 
@@ -80,19 +92,22 @@ def keops_lse(cost, D, dtype="float32"):
     return log_conv
 
 
-def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scaling=.5, cost=None, 
+def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scaling=.5, cost=None, identity=None,
                     debias = True, potentials = False, **kwargs):
     
-    N, D = x.shape
+    B, N, D = x.shape
     M, _ = y.shape
 
     if cost is None: cost = cost_formulas[p]
+
+    if identity is None:
+        identity = NaturalIdentity
 
     softmin = partial(softmin_online, log_conv=keops_lse(cost, D, dtype=str(x.dtype)[6:])) 
 
     # The "cost matrices" are implicitely encoded in the point clouds,
     # and re-computed on-the-fly:
-    C_xx, C_yy = ( (x, x.detach()), (y, y.detach()) ) if debias else (None, None)
+    C_xx, C_yy = ( (x, identity.forward(x.detach())), (identity.backward(y), y.detach()) ) if debias else (None, None)
     C_xy, C_yx = ( (x, y.detach()), (y, x.detach()) )
 
     diameter, ε, ε_s, ρ = scaling_parameters( x, y, p, blur, reach, diameter, scaling )
@@ -194,7 +209,7 @@ def extrapolate_samples( b_x, a_y, ε, λ, C_xy, β_log, C_xy_, softmin=None ):
 
 
 def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, 
-                        scaling=.5, truncate=5, cost=None, cluster_scale=None, 
+                        scaling=.5, truncate=5, cost=None, identity=None, cluster_scale=None, 
                         debias = True, potentials = False,
                         labels_x = None, labels_y = None,
                         verbose=False, **kwargs):
@@ -204,6 +219,10 @@ def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None,
 
     if cost is None: cost = cost_formulas[p], cost_routines[p]
     cost_formula, cost_routine = cost[0], cost[1]
+
+    if identity is None:
+        identity = NaturalIdentity
+
 
     softmin = partial(softmin_multiscale, log_conv=keops_lse(cost_formula, D, dtype=str(x.dtype)[6:])) 
     extrapolate = partial(extrapolate_samples, softmin=softmin)
@@ -241,10 +260,10 @@ def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None,
     # We do the same [ coarse, fine ] decomposition for "cost matrices",
     # which are implicitely encoded as point clouds
     # + integer summation ranges, and re-computed on-the-fly:
-    C_xxs = [ (x_c, x_c.detach(), ranges_x, ranges_x, None), 
-              (  x,   x.detach(),     None,     None, None) ] if debias else None
-    C_yys = [ (y_c, y_c.detach(), ranges_y, ranges_y, None), 
-              (  y,   y.detach(),     None,     None, None) ] if debias else None
+    C_xxs = [ (x_c, identity.forward(x_c.detach()), ranges_x, ranges_x, None), 
+              (  x,   identity.forward(x.detach()),     None,     None, None) ] if debias else None
+    C_yys = [ (identity.backward(y_c), y_c.detach(), ranges_y, ranges_y, None), 
+              (  identity.backward(y),   y.detach(),     None,     None, None) ] if debias else None
     C_xys = [ (x_c, y_c.detach(), ranges_x, ranges_y, None), 
               (  x,   y.detach(),     None,     None, None) ] 
     C_yxs = [ (y_c, x_c.detach(), ranges_y, ranges_x, None), 
