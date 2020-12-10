@@ -41,7 +41,7 @@ except:
     keops_available = False
     
 from .utils import scal, squared_distances, distances
-
+from .sinkhorn_samples import SinkhornResult
 
 # ==============================================================================
 #                            ε-scaling heuristic
@@ -125,8 +125,7 @@ def sinkhorn_cost(ε, ρ, α, β, a_x, b_y, a_y, b_x, batch=False, debias=True, 
 
 def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ, 
                    jumps=[], kernel_truncation=None, truncate=5, cost=None,
-                   extrapolate=None, debias=True, last_extrapolation=True ):
-    
+                   extrapolate=None, debias=True, last_extrapolation=True, full_result=False):
     Nits = len(ε_s)
     if type(α_logs) is not list:
         α_logs, β_logs = [α_logs], [β_logs]
@@ -225,6 +224,8 @@ def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, 
 
     if debias:
         return a_x, b_y, a_y, b_x
+    elif full_result:
+        return SinkhornResult(a_x, b_y, a_y, b_x, identity, softmin, C_xy)
     else:
         return None, None, a_y, b_x
 

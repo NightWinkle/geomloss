@@ -18,7 +18,23 @@ from .utils import scal, squared_distances, distances
 from .sinkhorn_divergence import epsilon_schedule, scaling_parameters
 from .sinkhorn_divergence import dampening, log_weights, sinkhorn_cost, sinkhorn_loop
 
+class SinkhornResult:
+    def __init__(self, a_x, b_y, a_y, b_x, identity, softmin, C_xy):
+        self.a_x = a_x
+        self.b_y = b_y
+        self.a_y = a_y
+        self.b_x = b_x
+        self.identity = identity
+        self.softmin = softmin
+        self.C_xy = C_xy
+        if a_x is None or b_y is None:
+            self.debias = False
 
+    def get_potentials(self, debiased=None):
+        if debiased or (debiased is None and self.debias):
+            return b_x - a_x, a_y - b_y
+        else:
+            return b_x, a_y
 
 # ==============================================================================
 #                          backend == "tensorized"
@@ -118,7 +134,7 @@ def keops_lse(cost, D, dtype="float32"):
     return log_conv
 
 def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scaling=.5, cost=None, identity=None,
-                    debias = True, potentials = False, **kwargs):
+                    debias = True, potentials = False, full_result=False, **kwargs):
     
     N, D = x.shape[-2:]
     M, _ = y.shape[-2:]
@@ -136,6 +152,19 @@ def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scal
     C_xy, C_yx = ( (x, y.detach()), (y, x.detach()) )
 
     diameter, ε, ε_s, ρ = scaling_parameters( x, y, p, blur, reach, diameter, scaling )
+
+    if full_result:
+        result = sinkhorn_loop( softmin,
+                                α_logs, β_logs, 
+                                C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,
+                                jumps=jumps,
+                                cost=cost_routine,
+                                kernel_truncation=partial(kernel_truncation, verbose=verbose),
+                                truncate=truncate,
+                                extrapolate=extrapolate, 
+                                debias = debias,
+                                full_result=full_result)
+        return result
 
     a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,
                                         log_weights(α), log_weights(β), 
@@ -237,7 +266,7 @@ def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None,
                         scaling=.5, truncate=5, cost=None, identity=None, cluster_scale=None, 
                         debias = True, potentials = False,
                         labels_x = None, labels_y = None,
-                        verbose=False, **kwargs):
+                        verbose=False, full_result=False, **kwargs):
     
     N, D = x.shape
     M, _ = y.shape
@@ -294,16 +323,29 @@ def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None,
     C_yxs = [ (y_c, x_c.detach(), ranges_y, ranges_x, None), 
               (  y,   x.detach(),     None,     None, None) ] 
 
-    a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,
-                                        α_logs, β_logs, 
-                                        C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,
-                                        jumps=jumps,
-                                        cost=cost_routine,
-                                        kernel_truncation=partial(kernel_truncation, verbose=verbose),
-                                        truncate=truncate,
-                                        extrapolate=extrapolate, 
-                                        debias = debias)
+    if full_result:
+        result = sinkhorn_loop( softmin,
+                                α_logs, β_logs, 
+                                C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,
+                                jumps=jumps,
+                                cost=cost_routine,
+                                kernel_truncation=partial(kernel_truncation, verbose=verbose),
+                                truncate=truncate,
+                                extrapolate=extrapolate, 
+                                debias = debias,
+                                full_result=full_result)
+        return result
 
+    a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,
+                                α_logs, β_logs, 
+                                C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,
+                                jumps=jumps,
+                                cost=cost_routine,
+                                kernel_truncation=partial(kernel_truncation, verbose=verbose),
+                                truncate=truncate,
+                                extrapolate=extrapolate, 
+                                debias = debias)
+                                
     cost = sinkhorn_cost(ε, ρ, α, β, a_x, b_y, a_y, b_x, debias=debias, potentials=potentials)
 
     if potentials:  # we should de-sort the vectors of potential values
