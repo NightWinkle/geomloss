@@ -41,12 +41,37 @@ except:
     keops_available = False
     
 from .utils import scal, squared_distances, distances
-from .sinkhorn_samples import SinkhornResult
 
 # ==============================================================================
 #                            ε-scaling heuristic
 # ==============================================================================
 
+class SinkhornResult:
+    def __init__(self, α_log, β_log, a_x, b_y, a_y, b_x, epsilon, identity, softmin, C_xy, C_yx, C_xx, C_yy):
+        self.α_log = α_log
+        self.β_log = β_log
+        self.a_x = a_x
+        self.b_y = b_y
+        self.a_y = a_y
+        self.b_x = b_x
+        self.epsilon = epsilon
+        self.identity = identity
+        self.softmin = softmin
+        self.C_xy = C_xy
+        self.C_yx = C_yx
+        self.C_xx = C_xx
+        self.C_yy = C_yy
+        if a_x is None or b_y is None:
+            self.debias = False
+
+    def get_potentials(self, debiased=None):
+        if debiased or (debiased is None and self.debias):
+            return b_x - a_x, a_y - b_y
+        else:
+            return b_x, a_y
+
+    def get_distributions(self):
+        return α, β
 
 def max_diameter(x, y):
     mins = torch.stack((x.min(dim=0)[0], y.min(dim=0)[0])).min(dim=0)[0]

@@ -18,33 +18,6 @@ from .utils import scal, squared_distances, distances
 from .sinkhorn_divergence import epsilon_schedule, scaling_parameters
 from .sinkhorn_divergence import dampening, log_weights, sinkhorn_cost, sinkhorn_loop
 
-class SinkhornResult:
-    def __init__(self, α_log, β_log, a_x, b_y, a_y, b_x, epsilon, identity, softmin, C_xy, C_yx, C_xx, C_yy):
-        self.α_log = α_log
-        self.β_log = β_log
-        self.a_x = a_x
-        self.b_y = b_y
-        self.a_y = a_y
-        self.b_x = b_x
-        self.epsilon = epsilon
-        self.identity = identity
-        self.softmin = softmin
-        self.C_xy = C_xy
-        self.C_yx = C_yx
-        self.C_xx = C_xx
-        self.C_yy = C_yy
-        if a_x is None or b_y is None:
-            self.debias = False
-
-    def get_potentials(self, debiased=None):
-        if debiased or (debiased is None and self.debias):
-            return b_x - a_x, a_y - b_y
-        else:
-            return b_x, a_y
-
-    def get_distributions(self):
-        return α, β
-
 # ==============================================================================
 #                          backend == "tensorized"
 # ==============================================================================
