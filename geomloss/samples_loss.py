@@ -8,6 +8,7 @@ from .kernel_samples import kernel_tensorized, kernel_online, kernel_multiscale
 from .sinkhorn_samples import sinkhorn_tensorized
 from .sinkhorn_samples import sinkhorn_online
 from .sinkhorn_samples import sinkhorn_multiscale
+from .sinkhorn_samples import SinkhornResult
 
 from .kernel_samples import kernel_tensorized as hausdorff_tensorized
 from .kernel_samples import kernel_online     as hausdorff_online
