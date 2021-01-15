@@ -225,7 +225,7 @@ def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, 
     if debias:
         return a_x, b_y, a_y, b_x
     elif full_result:
-        return SinkhornResult(a_x, b_y, a_y, b_x, identity, softmin, C_xy)
+        return SinkhornResult(α_log, β_log, a_x, b_y, a_y, b_x, ε, identity, softmin, C_xy, C_yx)
     else:
         return None, None, a_y, b_x
 
