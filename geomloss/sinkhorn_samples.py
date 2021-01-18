@@ -146,6 +146,7 @@ def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scal
                                 extrapolate=extrapolate, 
                                 debias = debias,
                                 full_result=full_result)
+        result.identity = identity
         return result
 
     a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,
@@ -318,6 +319,7 @@ def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None,
                                 full_result=full_result)
         cluster_scale = diameter / (np.sqrt(D) * 2000**(1/D))
         result.cluster_scale = cluster_scale
+        result.identity = identity
         return result
 
     a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,

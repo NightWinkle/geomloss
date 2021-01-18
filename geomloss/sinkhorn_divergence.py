@@ -47,7 +47,7 @@ from .utils import scal, squared_distances, distances
 # ==============================================================================
 
 class SinkhornResult:
-    def __init__(self, α_log, β_log, a_x, b_y, a_y, b_x, epsilon, identity, softmin, C_xy, C_yx, C_xx, C_yy, cluster_scale=None):
+    def __init__(self, α_log, β_log, a_x, b_y, a_y, b_x, epsilon, softmin, C_xy, C_yx, C_xx, C_yy, identity=None, cluster_scale=None):
         self.α_log = α_log
         self.β_log = β_log
         self.a_x = a_x
