@@ -320,19 +320,6 @@ def sinkhorn_multiscale(α, x, β, y, p=2, blur=.05, reach=None, diameter=None,
         result.cluster_scale = cluster_scale
         return result
 
-    if full_result:
-        result = sinkhorn_loop( softmin,
-                                α_logs, β_logs, 
-                                C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,
-                                jumps=jumps,
-                                cost=cost_routine,
-                                kernel_truncation=partial(kernel_truncation, verbose=verbose),
-                                truncate=truncate,
-                                extrapolate=extrapolate, 
-                                debias = debias,
-                                full_result=full_result)
-        return result
-
     a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,
                                 α_logs, β_logs, 
                                 C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,

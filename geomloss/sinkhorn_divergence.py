@@ -248,10 +248,10 @@ def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, 
         a_y, b_x = λ * softmin(ε, C_yx, (α_log + b_x/ε).detach() ), \
                    λ * softmin(ε, C_xy, (β_log + a_y/ε).detach() )
 
-    if debias:
-        return a_x, b_y, a_y, b_x
-    elif full_result:
+    if full_result:
         return SinkhornResult(α_log, β_log, a_x, b_y, a_y, b_x, ε, identity, softmin, C_xy, C_yx)
+    elif debias:
+        return a_x, b_y, a_y, b_x
     else:
         return None, None, a_y, b_x
 
