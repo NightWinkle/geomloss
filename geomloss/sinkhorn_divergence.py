@@ -47,7 +47,7 @@ from .utils import scal, squared_distances, distances
 # ==============================================================================
 
 class SinkhornResult:
-    def __init__(self, α_log, β_log, a_x, b_y, a_y, b_x, epsilon, softmin, C_xy, C_yx, C_xx, C_yy, identity=None, cluster_scale=None):
+    def __init__(self, α_log, β_log, a_x, b_y, a_y, b_x, epsilon, softmin, C_xy, C_yx, C_xx=None, C_yy=None, identity=None, cluster_scale=None):
         self.α_log = α_log
         self.β_log = β_log
         self.a_x = a_x
@@ -249,7 +249,10 @@ def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, 
                    λ * softmin(ε, C_xy, (β_log + a_y/ε).detach() )
 
     if full_result:
-        return SinkhornResult(α_log, β_log, a_x, b_y, a_y, b_x, ε, softmin, C_xy, C_yx)
+        if debias:
+            return SinkhornResult(α_log, β_log, a_x, b_y, a_y, b_x, ε, softmin, C_xy, C_yx, C_xx, C_yy)
+        else:
+            return SinkhornResult(α_log, β_log, a_x, b_y, a_y, b_x, ε, softmin, C_xy, C_yx)
     elif debias:
         return a_x, b_y, a_y, b_x
     else:
