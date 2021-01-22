@@ -97,7 +97,7 @@ def process_batch(tensor_x, tensor_y):
 def softmin_online(ε, C_xy, f_y, log_conv=None):
     x, y = C_xy
 
-    target_shape = f_y.shape
+    target_shape = x.shape[:1]
 
     d = x.shape[-1]
     ranges_xy = process_batch(x, y)
