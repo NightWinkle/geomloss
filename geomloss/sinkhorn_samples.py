@@ -137,13 +137,9 @@ def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scal
 
     if full_result:
         result = sinkhorn_loop( softmin,
-                                α_logs, β_logs, 
-                                C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ,
-                                jumps=jumps,
-                                cost=cost_routine,
-                                kernel_truncation=partial(kernel_truncation, verbose=verbose),
-                                truncate=truncate,
-                                extrapolate=extrapolate, 
+                                log_weights(α), log_weights(β), 
+                                C_xx, C_yy, C_xy, C_yx, ε_s, ρ,
+                                cost=cost,
                                 debias = debias,
                                 full_result=full_result)
         result.identity = identity
@@ -151,7 +147,7 @@ def sinkhorn_online(α, x, β, y, p=2, blur=.05, reach=None, diameter=None, scal
 
     a_x, b_y, a_y, b_x = sinkhorn_loop( softmin,
                                         log_weights(α), log_weights(β), 
-                                        C_xx, C_yy, C_xy, C_yx, ε_s, ρ, debias=debias )
+                                        C_xx, C_yy, C_xy, C_yx, ε_s, ρ, cost=cost, debias=debias )
 
     return sinkhorn_cost(ε, ρ, α, β, a_x, b_y, a_y, b_x, debias=debias, potentials=potentials)
 
