@@ -35,7 +35,7 @@ from functools import partial
 
 try:  # Import the keops library, www.kernel-operations.io
     from pykeops.torch import generic_logsumexp
-    from pykeops.torch.cluster import grid_cluster, cluster_ranges_centroids, sort_clusters, from_matrix
+    from pykeops.torch.cluster import grid_cluster, cluster_ranges_centroids, sort_clusters, from_matrix, swap_axes
     keops_available = True
 except:
     keops_available = False
@@ -148,6 +148,12 @@ def sinkhorn_cost(ε, ρ, α, β, a_x, b_y, a_y, b_x, batch=False, debias=True, 
                 return scal( α, UnbalancedWeight(ε, ρ)( 1 - (-b_x/ρ).exp() ), batch=batch ) \
                      + scal( β, UnbalancedWeight(ε, ρ)( 1 - (-a_y/ρ).exp() ), batch=batch )
 
+def swap_xy(C_xy):
+    """Swaps the x and y of a cost matrix.
+
+    This is an utility function primarly used for autocorrelation costs
+    """
+    return (C_xy[1], C_xy[0], C_xy[3], C_xy[2], swap_axes(C_xy[4]))
 
 def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, ρ, 
                    jumps=[], kernel_truncation=None, truncate=5, cost=None,
@@ -211,9 +217,9 @@ def sinkhorn_loop( softmin, α_logs, β_logs, C_xxs, C_yys, C_xys, C_yxs, ε_s, 
                 # Kernel truncation trick (described in Bernhard Schmitzer's 2016 paper),
                 # that typically relies on KeOps' block-sparse routines:
                 if debias:
-                    C_xx_, _     = kernel_truncation( C_xx, C_xx, C_xxs[k+1], C_xxs[k+1],
+                    C_xx_, _     = kernel_truncation( C_xx, swap_xy(C_xx), C_xxs[k+1], swap_xy(C_xxs[k+1]),
                                                         a_x, a_x, ε, truncate=truncate,cost=cost)
-                    C_yy_, _     = kernel_truncation( C_yy, C_yy, C_yys[k+1], C_yys[k+1],
+                    C_yy_, _     = kernel_truncation( C_yy, swap_xy(C_yy), C_yys[k+1], swap_xy(C_yys[k+1]),
                                                         b_y, b_y, ε, truncate=truncate,cost=cost)
                 C_xy_, C_yx_ = kernel_truncation( C_xy, C_yx, C_xys[k+1], C_yxs[k+1],
                                                     b_x, a_y, ε, truncate=truncate,cost=cost)

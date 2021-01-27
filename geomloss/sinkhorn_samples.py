@@ -231,7 +231,6 @@ def kernel_truncation( C_xy, C_yx, C_xy_, C_yx_,
         return (x_, yd_, ranges_x_, ranges_y_, ranges_xy_), \
                (y_, xd_, ranges_y_, ranges_x_, swap_axes(ranges_xy_))
 
-
 def extrapolate_samples( b_x, a_y, ε, λ, C_xy, β_log, C_xy_, softmin=None ):
     yd = C_xy[1]   # Source points (coarse)
     x_ = C_xy_[0]  # Target points (fine)
